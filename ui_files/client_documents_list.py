@@ -29,7 +29,7 @@ class Ui_DocumentsList(object):
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.scrollAreaWidgetContents)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.documents_list = QtWidgets.QListView(parent=self.scrollAreaWidgetContents)
+        self.documents_list = QtWidgets.QListWidget(parent=self.scrollAreaWidgetContents)
         self.documents_list.setObjectName("documents_list")
         self.horizontalLayout_2.addWidget(self.documents_list)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)

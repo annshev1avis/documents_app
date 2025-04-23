@@ -14,7 +14,7 @@ class Database:
     def get_client_documents_short_info(self, client_id):
         self.cur.execute(
             "select id, name, type, price, status "
-            "from document_with_related_data "
+            "from documents_with_related_data "
             "where client_id = % s",
             (client_id, )
         )
