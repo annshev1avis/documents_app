@@ -1,80 +1,74 @@
 import sys
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                             QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QTextEdit,
+                             QComboBox, QStackedWidget, QFileDialog, QMessageBox, QHeaderView, QTabWidget)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 
-from PyQt6 import QtWidgets
-
-import database
-from ui_files.client_documents_list import Ui_DocumentsList
+from database import DatabaseManager
 
 
-class ClientMainWindow(QtWidgets.QMainWindow):
-    def __init__(self, db, user_id):
+class UserDashboard(QWidget):
+    def __init__(self, main_window):
         super().__init__()
-        self.db = db
-        self.user_id = user_id
+        self.main_window = main_window
+        self.db = DatabaseManager()
+        self.init_ui()
+        self.load_user_requests()
 
-        self.stack = QtWidgets.QStackedWidget()
-        self.setCentralWidget(self.stack)
-        self.init_documents_list_screen()
+    def init_ui(self):
+        layout = QVBoxLayout()
 
-    def init_documents_list_screen(self):
-        self.documents_list_screen = DocumentsListScreen(self)
-        self.stack.addWidget(self.documents_list_screen)
+        # Заголовок
+        self.title_label = QLabel(f'Личный кабинет пользователя')
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
 
-    def go_to_single_doc_screen(self, doc_id=None):
-        pass
+        # Таблица заявок
+        self.requests_table = QTableWidget()
+        self.requests_table.setColumnCount(6)
+        self.requests_table.setHorizontalHeaderLabels(['ID', 'Название', 'Тип', 'Дата', 'Статус', 'Приоритет'])
+        self.requests_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.requests_table.doubleClicked.connect(self.show_request_details)
 
+        # Кнопки
+        buttons_layout = QHBoxLayout()
+        self.new_request_button = QPushButton('Новая заявка')
+        self.new_request_button.clicked.connect(self.show_new_request_form)
+        self.refresh_button = QPushButton('Обновить')
+        self.refresh_button.clicked.connect(self.load_user_requests)
 
-class DocumentsListScreen(QtWidgets.QWidget, Ui_DocumentsList):
-    def __init__(self, parent):
-        super().__init__()
-        self.parent = parent
+        buttons_layout.addWidget(self.new_request_button)
+        buttons_layout.addWidget(self.refresh_button)
 
-        self.setupUi(self)
+        layout.addWidget(self.title_label)
+        layout.addWidget(self.requests_table)
+        layout.addLayout(buttons_layout)
 
-        # обработка кнопок
-        self.create_button.clicked.connect()
+        self.setLayout(layout)
 
-        # загрузка данных
-        self.load_list()
+    def load_user_requests(self):
+        query = """
+            SELECT d.id, d.name, t.name as type, d.date_signed, s.name as status, d.priority_level 
+            FROM documents d 
+            JOIN types t ON d.type_id = t.id 
+            JOIN statuses s ON d.status_id = s.id 
+            WHERE d.client_id = %s
+            """
+        requests = self.db.execute_query(query, (self.main_window.user_id,))
 
-    def make_card(self, data):
-        card = QtWidgets.QWidget()
-        card.data = data
-        layout = QtWidgets.QVBoxLayout()
-        card.setLayout(layout)
+        self.requests_table.setRowCount(len(requests))
+        for row, request in enumerate(requests):
+            self.requests_table.setItem(row, 0, QTableWidgetItem(str(request['id'])))
+            self.requests_table.setItem(row, 1, QTableWidgetItem(request['name']))
+            self.requests_table.setItem(row, 2, QTableWidgetItem(request['type']))
+            self.requests_table.setItem(row, 3, QTableWidgetItem(str(request['date_signed'])))
+            self.requests_table.setItem(row, 4, QTableWidgetItem(str(request['status'])))
+            self.requests_table.setItem(row, 5, QTableWidgetItem(request['priority_level']))
 
-        layout.addWidget(QtWidgets.QLabel(card.data["name"]))
-        layout.addWidget(QtWidgets.QLabel(f"Тип: {card.data['name']}"))
-        layout.addWidget(QtWidgets.QLabel(f"Цена: {card.data['price']}"))
-        layout.addWidget(QtWidgets.QLabel(f"Текущий статус: {card.data['status']}"))
+    def show_request_details(self, index):
+        request_id = int(self.requests_table.item(index.row(), 0).text())
+        self.main_window.show_request_details(request_id)
 
-        return card
-
-    def load_list(self):
-        self.documents_list.clear()
-
-        docs = self.parent.db.get_client_documents_short_info(
-            self.parent.user_id
-        )
-        for doc in docs:
-            list_item = QtWidgets.QListWidgetItem()
-            card = self.make_card(doc)
-
-            list_item.setSizeHint(card.sizeHint())
-            self.documents_list.addItem(list_item)
-            self.documents_list.setWidgetItem(list_item, card)
-
-    def view_doc(self):
-        pass
-
-
-class SingleDocumentScreen(QtWidgets.QWidget):
-    pass
-
-if __name__ == "__main__":
-    db = database.Database()
-
-    app = QtWidgets.QApplication(sys.argv)
-    win = ClientMainWindow(db, 1)
-    win.show()
-    app.exec()
+    def show_new_request_form(self):
+        self.main_window.show_new_request_form()

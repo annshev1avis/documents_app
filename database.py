@@ -1,21 +1,27 @@
 import pymysql
 
 
-class Database:
+class DatabaseManager:
     def __init__(self):
-        self.con = pymysql.connect(
-            host="127.0.0.1",
-            user="root",
-            password="",
-            database="documents"
+        self.connection = pymysql.connect(
+            host='127.0.0.1',
+            user='root',
+            password='',
+            database='documents',
+            port=3306,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
         )
-        self.cur = self.con.cursor()
 
-    def get_client_documents_short_info(self, client_id):
-        self.cur.execute(
-            "select id, name, type, price, status "
-            "from documents_with_related_data "
-            "where client_id = % s",
-            (client_id, )
-        )
-        return self.cur.fetchall()
+    def execute_query(self, query, params=None, fetch_one=False):
+        with self.connection.cursor() as cursor:
+            cursor.execute(query, params or ())
+            if fetch_one:
+                result = cursor.fetchone()
+            else:
+                result = cursor.fetchall()
+            self.connection.commit()
+            return result
+
+    def close(self):
+        self.connection.close()
